@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "343544298146",
+    "project_id": "atlant-points",
+    "storage_bucket": "atlant-points.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:343544298146:android:f5d5611ae4f887596c75fb",
+        "android_client_info": {
+          "package_name": "com.example.atlant_points"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDgy64T15gnKplmk394rmmpB1ww6xp-mow"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

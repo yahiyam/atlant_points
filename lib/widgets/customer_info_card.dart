@@ -21,7 +21,7 @@ class CustomerInfoCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Mobile Number: ${customer.mobile}'),
-            Text('Available Atlant Points: ${customer.points}'),
+            Text('Available Atlant Points: 25'),
           ],
         ),
       ),

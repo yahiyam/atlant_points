@@ -34,7 +34,7 @@ class _CustomerConfirmPageState extends State<CustomerConfirmPage> {
       0,
       (sum, category) => sum + category.points,
     );
-    final newTotal = widget.customer.points + pointsToAdd;
+    final newTotal = 25 + pointsToAdd;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Confirm Points')),

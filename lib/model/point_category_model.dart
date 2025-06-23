@@ -3,6 +3,35 @@ class PointCategory {
   final int points;
 
   PointCategory({required this.title, required this.points});
+
+  factory PointCategory.fromJson(Map<String, dynamic> json) {
+    return PointCategory(
+      title: json['title'] ?? '',
+      points: json['points'] ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {'title': title, 'points': points};
+  }
+
+  PointCategory copyWith({String? title, int? points}) {
+    return PointCategory(
+      title: title ?? this.title,
+      points: points ?? this.points,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PointCategory &&
+          runtimeType == other.runtimeType &&
+          title == other.title &&
+          points == other.points;
+
+  @override
+  int get hashCode => title.hashCode ^ points.hashCode;
 }
 
 final List<PointCategory> pointCategories = [
