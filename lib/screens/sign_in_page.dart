@@ -1,6 +1,9 @@
-import 'package:atlant_points/screens/home_page.dart';
+/* import 'package:atlant_points/screens/home_page.dart';
+import 'package:atlant_points/screens/sign_up_page.dart';
+import 'package:atlant_points/services/auth_service.dart';
 import 'package:atlant_points/widgets/app_logo_widget.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SignInPage extends StatefulWidget {
   const SignInPage({super.key});
@@ -10,12 +13,93 @@ class SignInPage extends StatefulWidget {
 }
 
 class _SignInPageState extends State<SignInPage> {
-  bool _isPasswordVisible = false;
-  bool _rememberMe = false;
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final AuthService _authService = AuthService();
+
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
-  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  bool _isPasswordVisible = false;
+  bool _rememberMe = false;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRememberedCredentials();
+  }
+
+  Future<void> _loadRememberedCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    final email = prefs.getString('email');
+    final password = prefs.getString('password');
+
+    if (email != null && password != null) {
+      setState(() {
+        emailController.text = email;
+        passwordController.text = password;
+        _rememberMe = true;
+      });
+    }
+  }
+
+  Future<void> _handleRememberMe() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (_rememberMe) {
+      await prefs.setString('email', emailController.text);
+      await prefs.setString('password', passwordController.text);
+    } else {
+      await prefs.remove('email');
+      await prefs.remove('password');
+    }
+  }
+
+  void _resetPassword() async {
+    final email = emailController.text.trim();
+    try {
+      await _authService.sendPasswordResetEmail(email);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Password reset email sent to $email")),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: ${e.toString()}")),
+      );
+    }
+  }
+
+  Future<void> _signIn() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+    await _handleRememberMe();
+
+    try {
+      final user = await _authService.signInWithEmail(
+        emailController.text.trim(),
+        passwordController.text.trim(),
+      );
+
+      if (!mounted) return;
+      if (user != null) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const HomePage()),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Login failed: ${e.toString()}")),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Widget _gap() => const SizedBox(height: 16);
 
   @override
   Widget build(BuildContext context) {
@@ -31,126 +115,102 @@ class _SignInPageState extends State<SignInPage> {
               constraints: const BoxConstraints(maxWidth: 350),
               child: SingleChildScrollView(
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    AppLogo(),
+                    const AppLogo(),
                     _gap(),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: Text(
-                        "Welcome to Atlant Points!",
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
+                    Text(
+                      "Welcome to Atlant Points!",
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        "Enter your email and password to continue.",
-                        style: Theme.of(context).textTheme.bodySmall,
-                        textAlign: TextAlign.center,
-                      ),
+                    Text(
+                      "Enter your email and password to continue.",
+                      style: Theme.of(context).textTheme.bodySmall,
+                      textAlign: TextAlign.center,
                     ),
                     _gap(),
                     TextFormField(
+                      controller: emailController,
                       validator: (value) {
-                        // add email validation
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter some text';
+                        if (value == null || value.isEmpty) return 'Enter email';
+                        if (!RegExp(r"^[^@]+@[^@]+\.[^@]+").hasMatch(value)) {
+                          return 'Enter valid email';
                         }
-
-                        bool emailValid = RegExp(
-                          r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+",
-                        ).hasMatch(value);
-                        if (!emailValid) {
-                          return 'Please enter a valid email';
-                        }
-
                         return null;
                       },
                       decoration: const InputDecoration(
                         labelText: 'Email',
-                        hintText: 'Enter your email',
                         prefixIcon: Icon(Icons.email_outlined),
                         border: OutlineInputBorder(),
                       ),
                     ),
                     _gap(),
                     TextFormField(
+                      controller: passwordController,
+                      obscureText: !_isPasswordVisible,
                       validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter some text';
-                        }
-
-                        if (value.length < 6) {
-                          return 'Password must be at least 6 characters';
-                        }
+                        if (value == null || value.isEmpty) return 'Enter password';
+                        if (value.length < 6) return 'Min 6 characters';
                         return null;
                       },
-                      obscureText: !_isPasswordVisible,
                       decoration: InputDecoration(
                         labelText: 'Password',
-                        hintText: 'Enter your password',
-                        prefixIcon: const Icon(Icons.lock_outline_rounded),
+                        prefixIcon: const Icon(Icons.lock_outline),
                         border: const OutlineInputBorder(),
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _isPasswordVisible
-                                ? Icons.visibility_off
-                                : Icons.visibility,
+                            _isPasswordVisible ? Icons.visibility_off : Icons.visibility,
                           ),
                           onPressed: () {
-                            setState(() {
-                              _isPasswordVisible = !_isPasswordVisible;
-                            });
+                            setState(() => _isPasswordVisible = !_isPasswordVisible);
                           },
                         ),
                       ),
                     ),
-                    _gap(),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: _resetPassword,
+                        child: const Text('Forgot Password?'),
+                      ),
+                    ),
                     CheckboxListTile(
                       value: _rememberMe,
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() {
-                          _rememberMe = value;
-                        });
+                      onChanged: (val) {
+                        setState(() => _rememberMe = val ?? false);
                       },
                       title: const Text('Remember me'),
                       controlAffinity: ListTileControlAffinity.leading,
-                      dense: true,
-                      contentPadding: const EdgeInsets.all(0),
                     ),
                     _gap(),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ),
-                        child: const Padding(
-                          padding: EdgeInsets.all(10.0),
-                          child: Text(
-                            'Sign in',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                    _isLoading
+                        ? const CircularProgressIndicator()
+                        : SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: _signIn,
+                              child: const Padding(
+                                padding: EdgeInsets.all(10.0),
+                                child: Text('Sign In'),
+                              ),
                             ),
                           ),
+                    _gap(),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text("Don’t have an account? "),
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.of(context).push(MaterialPageRoute(
+                              builder: (_) => const SignUpPage(),
+                            ));
+                          },
+                          child: const Text(
+                            "Sign up",
+                            style: TextStyle(color: Colors.blue),
+                          ),
                         ),
-                        onPressed: () {
-                          if (_formKey.currentState?.validate() ?? false) {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const HomePage(),
-                              ),
-                            );
-                          }
-                        },
-                      ),
+                      ],
                     ),
                   ],
                 ),
@@ -161,6 +221,5 @@ class _SignInPageState extends State<SignInPage> {
       ),
     );
   }
-
-  Widget _gap() => const SizedBox(height: 16);
 }
+ */

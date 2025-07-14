@@ -87,6 +87,7 @@ class _CustomerMobileEntryPageState extends State<CustomerMobileEntryPage> {
                 keyboardType: TextInputType.phone,
                 decoration: const InputDecoration(
                   labelText: 'Customer Mobile',
+                  helperText: '05X XXX XXXX',
                   border: OutlineInputBorder(),
                 ),
                 validator: validateMobile,
