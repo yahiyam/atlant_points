@@ -1,5 +1,7 @@
 import 'package:atlant_points/model/customer_model.dart';
 import 'package:atlant_points/model/point_category_model.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'home_page.dart';
 import '../widgets/customer_info_card.dart';
@@ -28,13 +30,90 @@ class _CustomerConfirmPageState extends State<CustomerConfirmPage> {
     selectedCategories = Set.from(widget.selectedCategories);
   }
 
+  Future<void> _submitPoints() async {
+    setState(() => isSubmitting = true);
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception("Employee not logged in");
+
+      final totalPoints = selectedCategories.fold<int>(
+        0,
+        (previousPoints, category) => previousPoints + category.points,
+      );
+
+      // 1. Add to logs collection
+      await FirebaseFirestore.instance.collection('logs').add({
+        'timestamp': FieldValue.serverTimestamp(),
+        'employeeId': user.uid,
+        'customer': {
+          'id': widget.customer.id,
+          'name': widget.customer.name,
+          'mobile': widget.customer.mobile,
+        },
+        'pointsAdded': totalPoints,
+        'categories': selectedCategories
+            .map((c) => {'title': c.title, 'points': c.points})
+            .toList(),
+      });
+
+      // 2. Update totalPoints in customer document
+      final customerRef = FirebaseFirestore.instance
+          .collection('customers')
+          .doc(widget.customer.id);
+
+      await FirebaseFirestore.instance.runTransaction((txn) async {
+        final snap = await txn.get(customerRef);
+        final currentPoints = snap.data()?['totalPoints'] ?? 0;
+        txn.update(customerRef, {
+          'totalPoints': currentPoints + totalPoints,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      });
+
+      // ✅ Show success dialog
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => AlertDialog(
+            title: const Text('Success 🎉'),
+            content: Text(
+              '${widget.customer.name} has been awarded $totalPoints points.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop(); // Close dialog
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const HomePage()),
+                    (route) => false,
+                  );
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() => isSubmitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to submit points: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final pointsToAdd = selectedCategories.fold<int>(
       0,
-      (sum, category) => sum + category.points,
+      (previousPoints, category) => previousPoints + category.points,
     );
-    final newTotal = 25 + pointsToAdd;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Confirm Points')),
@@ -53,44 +132,43 @@ class _CustomerConfirmPageState extends State<CustomerConfirmPage> {
               ),
             ),
             const SizedBox(height: 8),
-            ...selectedCategories.map((cat) => Dismissible(
-                  key: ValueKey(cat.title),
-                  direction: DismissDirection.endToStart,
-                  background: Container(
-                    color: Colors.red,
-                    alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: const Icon(Icons.delete, color: Colors.white),
-                  ),
-                  onDismissed: (_) {
-                    setState(() => selectedCategories.remove(cat));
-                  },
-                  child: ListTile(
-                    leading: const Icon(Icons.star, color: Colors.orangeAccent),
-                    title: Text(cat.title),
-                    trailing: Text('+${cat.points} pts'),
-                  ),
-                )),
+            ...selectedCategories.map(
+              (cat) => Dismissible(
+                key: ValueKey(cat.title),
+                direction: DismissDirection.endToStart,
+                background: Container(
+                  color: Colors.red,
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: const Icon(Icons.delete, color: Colors.white),
+                ),
+                onDismissed: (_) {
+                  setState(() => selectedCategories.remove(cat));
+                },
+                child: ListTile(
+                  leading: const Icon(Icons.star, color: Colors.orangeAccent),
+                  title: Text(cat.title),
+                  trailing: Text('+${cat.points} pts'),
+                ),
+              ),
+            ),
             const Divider(height: 32),
-            Text('Points to Add: $pointsToAdd', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Text('New Total: $newTotal'),
+            Text(
+              'Points to Add: $pointsToAdd',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 32),
             isSubmitting
                 ? const CircularProgressIndicator()
-                : ElevatedButton(
+                : ElevatedButton.icon(
+                    icon: const Icon(Icons.check_circle_outline),
+                    label: const Text('Submit Points'),
                     onPressed: selectedCategories.isNotEmpty
-                        ? () async {
-                            setState(() => isSubmitting = true);
-                            await Future.delayed(const Duration(seconds: 2));
-                            Navigator.pushAndRemoveUntil(
-                              context,
-                              MaterialPageRoute(builder: (_) => const HomePage()),
-                              (route) => false,
-                            );
-                          }
+                        ? _submitPoints
                         : null,
-                    child: const Text('Submit Points'),
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(50),
+                    ),
                   ),
           ],
         ),

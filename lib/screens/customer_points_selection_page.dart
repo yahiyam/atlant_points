@@ -1,11 +1,13 @@
 import 'package:atlant_points/model/customer_model.dart';
 import 'package:atlant_points/model/point_category_model.dart';
+import 'package:atlant_points/screens/customer_confirm_page.dart';
 import 'package:atlant_points/widgets/customer_info_card.dart';
 import 'package:flutter/material.dart';
-import 'customer_confirm_page.dart';
 
 class CustomerPointsSelectionPage extends StatefulWidget {
-  const CustomerPointsSelectionPage({super.key});
+  final Customer customer;
+
+  const CustomerPointsSelectionPage({super.key, required this.customer});
 
   @override
   State<CustomerPointsSelectionPage> createState() =>
@@ -24,7 +26,7 @@ class _CustomerPointsSelectionPageState
         padding: const EdgeInsets.all(24.0),
         child: Column(
           children: [
-            CustomerInfoCard(customer: sampleCustomer),
+            CustomerInfoCard(customer: widget.customer),
             const SizedBox(height: 20),
             Expanded(
               child: SingleChildScrollView(
@@ -60,7 +62,7 @@ class _CustomerPointsSelectionPageState
                         context,
                         MaterialPageRoute(
                           builder: (_) => CustomerConfirmPage(
-                            customer: sampleCustomer,
+                            customer: widget.customer,
                             selectedCategories: selectedCategories.toList(),
                           ),
                         ),

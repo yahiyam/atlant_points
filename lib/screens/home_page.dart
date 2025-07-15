@@ -1,40 +1,40 @@
-import 'package:atlant_points/screens/wraper_screen.dart';
-import 'package:flutter/material.dart';
+import 'package:atlant_points/screens/customer_mobile_entry_page.dart';
+import 'package:atlant_points/screens/customer_search_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'customer_mobile_entry_page.dart';
+import 'package:flutter/material.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
-  void _confirmLogout(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Confirm Logout"),
-        content: const Text("Are you sure you want to log out?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text("Cancel"),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.of(context).pop();
-              await FirebaseAuth.instance.signOut();
-              if (context.mounted) {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const WrapperScreen()),
-                );
-              }
-            },
-            child: const Text("Logout"),
-          ),
-        ],
-      ),
-    );
-  }
+  // void _confirmLogout(BuildContext context) {
+  //   showDialog(
+  //     context: context,
+  //     builder: (_) => AlertDialog(
+  //       title: const Text("Confirm Logout"),
+  //       content: const Text("Are you sure you want to log out?"),
+  //       actions: [
+  //         TextButton(
+  //           onPressed: () => Navigator.of(context).pop(),
+  //           child: const Text("Cancel"),
+  //         ),
+  //         TextButton(
+  //           onPressed: () async {
+  //             Navigator.of(context).pop();
+  //             await FirebaseAuth.instance.signOut();
+  //             if (context.mounted) {
+  //               Navigator.pushReplacement(
+  //                 context,
+  //                 MaterialPageRoute(builder: (_) => const WrapperScreen()),
+  //               );
+  //             }
+  //           },
+  //           child: const Text("Logout"),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   Stream<QuerySnapshot> getTodayLogsStream() {
     final now = DateTime.now();
@@ -55,7 +55,8 @@ class HomePage extends StatelessWidget {
         .collection('employees')
         .doc(user?.uid)
         .get();
-    return (doc.data()?['name'] ?? 'Employee').toString().toUpperCase();
+    final name = doc.data()?['name'] ?? 'Employee';
+    return name.toString().toUpperCase(); // UPPERCASE
   }
 
   @override
@@ -64,10 +65,10 @@ class HomePage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Atlant Points'),
         // actions: [
-        //   TextButton.icon(
+        //   IconButton(
+        //     icon: const Icon(Icons.logout),
         //     onPressed: () => _confirmLogout(context),
-        //     icon: const Icon(Icons.logout, color: Colors.red),
-        //     label: const Text("Logout", style: TextStyle(color: Colors.red)),
+        //     tooltip: 'Logout',
         //   ),
         // ],
       ),
@@ -76,11 +77,26 @@ class HomePage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            ElevatedButton.icon(
+              icon: const Icon(Icons.search),
+              label: const Text('View Customers'),
+              style: ElevatedButton.styleFrom(minimumSize: const Size(200, 50)),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CustomerSearchPage()),
+                );
+              },
+            ),
+
             FutureBuilder<String>(
               future: getEmployeeName(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Padding(
+                    padding: EdgeInsets.all(12.0),
+                    child: Center(child: LinearProgressIndicator()),
+                  );
                 }
                 final name = snapshot.data ?? 'EMPLOYEE';
                 return Center(
@@ -150,17 +166,39 @@ class HomePage extends StatelessWidget {
                       final timeStr = timestamp != null
                           ? TimeOfDay.fromDateTime(timestamp).format(context)
                           : 'Unknown time';
+                      final categories =
+                          (data['categories'] as List<dynamic>? ?? [])
+                              .map((c) => "${c['title']} (+${c['points']})")
+                              .join(', ');
+                      final employeeId = data['employeeId'];
 
-                      return Card(
-                        elevation: 2,
-                        child: ListTile(
-                          leading: const Icon(
-                            Icons.check_circle,
-                            color: Colors.green,
-                          ),
-                          title: Text('$name earned $points pts'),
-                          subtitle: Text('Time: $timeStr'),
-                        ),
+                      return FutureBuilder<DocumentSnapshot>(
+                        future: FirebaseFirestore.instance
+                            .collection('employees')
+                            .doc(employeeId)
+                            .get(),
+                        builder: (context, snapshot) {
+                          final employeeName = snapshot.data?.data() != null
+                              ? (snapshot.data!.data()
+                                        as Map<String, dynamic>)['name'] ??
+                                    'Unknown'
+                              : 'Unknown';
+
+                          return ExpansionTile(
+                            leading: const Icon(
+                              Icons.check_circle,
+                              color: Colors.green,
+                            ),
+                            title: Text('$name earned $points pts'),
+                            subtitle: Text('Time: $timeStr'),
+                            children: [
+                              ListTile(
+                                title: Text('Employee: $employeeName'),
+                                subtitle: Text('Categories: $categories'),
+                              ),
+                            ],
+                          );
+                        },
                       );
                     },
                   );

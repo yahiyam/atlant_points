@@ -1,6 +1,8 @@
-import 'package:atlant_points/screens/customer_points_selection_page.dart';
+import 'package:atlant_points/model/customer_model.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'customer_points_selection_page.dart';
 
 class CustomerMobileEntryPage extends StatefulWidget {
   const CustomerMobileEntryPage({super.key});
@@ -35,10 +37,30 @@ class _CustomerMobileEntryPageState extends State<CustomerMobileEntryPage> {
     return null;
   }
 
-  Future<bool> checkIfCustomerExists(String mobile) async {
-    // TODO: Replace with Firestore query
-    await Future.delayed(const Duration(milliseconds: 500));
-    return false; // Simulated: No existing customer found
+  Future<Customer?> fetchCustomer(String mobile) async {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('customers')
+        .doc(mobile)
+        .get();
+
+    if (snapshot.exists) {
+      final data = snapshot.data()!;
+      return Customer(
+        id: mobile,
+        mobile: mobile,
+        name: data['name'] ?? 'Unknown',
+        points: data['points'] ?? 0, // ✅ include points here
+      );
+    }
+    return null;
+  }
+
+  Future<void> registerCustomer(String mobile, String name) async {
+    await FirebaseFirestore.instance.collection('customers').doc(mobile).set({
+      'name': name,
+      'points': 0, // ✅ initialize points
+      'createdAt': FieldValue.serverTimestamp(),
+    });
   }
 
   void handleNext() async {
@@ -48,28 +70,41 @@ class _CustomerMobileEntryPageState extends State<CustomerMobileEntryPage> {
 
     setState(() => isLoading = true);
 
-    final exists = await checkIfCustomerExists(mobile);
+    final customer = await fetchCustomer(mobile);
 
     setState(() {
       isLoading = false;
-      showNameField = !exists;
+      showNameField = customer == null;
     });
 
-    if (exists) {
+    if (customer != null) {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => const CustomerPointsSelectionPage()),
+        MaterialPageRoute(
+          builder: (_) => CustomerPointsSelectionPage(customer: customer),
+        ),
       );
     }
   }
 
-  void handleFinalSubmit() {
-    if (_formKey.currentState!.validate()) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const CustomerPointsSelectionPage()),
-      );
-    }
+  void handleFinalSubmit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final mobile = mobileController.text.trim();
+    final name = nameController.text.trim();
+
+    setState(() => isLoading = true);
+    await registerCustomer(mobile, name);
+    setState(() => isLoading = false);
+
+    final customer = Customer(mobile: mobile, name: name, id: mobile);
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CustomerPointsSelectionPage(customer: customer),
+      ),
+    );
   }
 
   @override
