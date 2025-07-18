@@ -2,13 +2,13 @@ class Customer {
   final String id;
   final String mobile;
   final String name;
-  final int? points;
+  final int? totalPoints;
 
   Customer({
     required this.id,
     required this.mobile,
     required this.name,
-    this.points,
+    this.totalPoints,
   });
 
   factory Customer.fromJson(Map<String, dynamic> json, String id) {
@@ -16,7 +16,7 @@ class Customer {
       id: id,
       mobile: json['mobile'] ?? '',
       name: json['name'] ?? '',
-      points: json['points'],
+      totalPoints: json['points'],
     );
   }
 
@@ -24,7 +24,7 @@ class Customer {
     return {
       'mobile': mobile,
       'name': name,
-      if (points != null) 'points': points,
+      if (totalPoints != null) 'points': totalPoints,
     };
   }
 
@@ -33,7 +33,7 @@ class Customer {
       id: id ?? this.id,
       mobile: mobile ?? this.mobile,
       name: name ?? this.name,
-      points: points ?? this.points,
+      totalPoints: points ?? totalPoints,
     );
   }
 }

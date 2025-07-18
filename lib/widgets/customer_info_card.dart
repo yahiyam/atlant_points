@@ -28,26 +28,59 @@ class CustomerInfoCard extends StatelessWidget {
         final hasError = snapshot.hasError;
         final points = snapshot.data ?? 0;
 
-        return Card(
-          elevation: 4,
+        return Container(
           margin: const EdgeInsets.symmetric(vertical: 10),
-          child: ListTile(
-            leading: const Icon(Icons.person, size: 32),
-            title: Text(
-              customer.name,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.grey.shade200, width: 1.2),
+            // boxShadow removed!
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Mobile Number: ${customer.mobile}'),
-                const SizedBox(height: 4),
-                if (loading)
-                  const Text('Loading points...')
-                else if (hasError)
-                  const Text('Error fetching points')
-                else
-                  Text('Available Atlant Points: $points'),
+                Text(
+                  customer.name,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.primary,
+                        fontSize: 18,
+                      ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.phone_android, size: 18, color: Colors.grey),
+                    const SizedBox(width: 6),
+                    Text(
+                      customer.mobile,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.stars, size: 18, color: Colors.amber),
+                    const SizedBox(width: 6),
+                    if (loading)
+                      const Text('Loading points...')
+                    else if (hasError)
+                      const Text('Error fetching points')
+                    else
+                      Text(
+                        'Total Points: $points',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Colors.blue,
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                  ],
+                ),
               ],
             ),
           ),

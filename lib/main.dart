@@ -20,8 +20,11 @@ class AtlantApp extends StatelessWidget {
     return MaterialApp(
       title: 'Atlant Points',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueAccent),
         useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Color(0xFF009FFD),
+          brightness: Brightness.light,
+        ),
       ),
       debugShowCheckedModeBanner: false,
       home: WrapperScreen(),
