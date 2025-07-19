@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:atlant_points/screens/home_page.dart';
+import 'package:flutter/services.dart';
 
 class EmailLoginPage extends StatefulWidget {
   const EmailLoginPage({super.key});
@@ -15,6 +16,7 @@ class _EmailLoginPageState extends State<EmailLoginPage> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController nameController = TextEditingController();
+  final TextEditingController mobileController = TextEditingController();
 
   bool _isLoading = false;
   bool _isRegister = false;
@@ -30,23 +32,27 @@ class _EmailLoginPageState extends State<EmailLoginPage> {
       if (_isRegister) {
         userCredential = await FirebaseAuth.instance
             .createUserWithEmailAndPassword(
-                email: emailController.text.trim(),
-                password: passwordController.text.trim());
-        // Save user info in Firestore
+              email: emailController.text.trim(),
+              password: passwordController.text.trim(),
+            );
+
+        // Save user info in Firestore (including password, not recommended for production)
         await FirebaseFirestore.instance
             .collection('employees')
             .doc(userCredential.user!.uid)
             .set({
-          'name': nameController.text.trim(),
-          'email': emailController.text.trim(),
-          'createdAt': FieldValue.serverTimestamp(),
-          'isAdmin': false,
-        });
+              'name': nameController.text.trim(),
+              'email': emailController.text.trim(),
+              'mobile': mobileController.text.trim(),
+              'password': passwordController.text.trim(), // Not recommended!
+              'isAdmin': false,
+              'createdAt': FieldValue.serverTimestamp(),
+            });
       } else {
-        userCredential = await FirebaseAuth.instance
-            .signInWithEmailAndPassword(
-                email: emailController.text.trim(),
-                password: passwordController.text.trim());
+        userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: emailController.text.trim(),
+          password: passwordController.text.trim(),
+        );
       }
 
       if (context.mounted) {
@@ -72,7 +78,9 @@ class _EmailLoginPageState extends State<EmailLoginPage> {
         child: SingleChildScrollView(
           child: Card(
             elevation: 4,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             child: Container(
               padding: const EdgeInsets.all(32),
               constraints: const BoxConstraints(maxWidth: 350),
@@ -85,7 +93,10 @@ class _EmailLoginPageState extends State<EmailLoginPage> {
                     _gap(),
                     Text(
                       _isRegister ? 'Register' : 'Login',
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     _gap(),
                     if (_isRegister)
@@ -99,6 +110,34 @@ class _EmailLoginPageState extends State<EmailLoginPage> {
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
                             return 'Please enter your name';
+                          }
+                          return null;
+                        },
+                      ),
+                    if (_isRegister) _gap(),
+                    if (_isRegister)
+                      TextFormField(
+                        controller: mobileController,
+                        decoration: const InputDecoration(
+                          labelText: 'Mobile',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.phone),
+                        ),
+                        keyboardType: TextInputType.phone,
+                        inputFormatters: [
+                          LengthLimitingTextInputFormatter(10),
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Please enter your mobile number';
+                          }
+                          final trimmed = value.trim();
+                          if (!trimmed.startsWith('05')) {
+                            return 'Mobile number must start with 05';
+                          }
+                          if (trimmed.length != 10) {
+                            return 'Mobile number must be exactly 10 digits';
                           }
                           return null;
                         },
@@ -161,9 +200,11 @@ class _EmailLoginPageState extends State<EmailLoginPage> {
                       onPressed: () {
                         setState(() => _isRegister = !_isRegister);
                       },
-                      child: Text(_isRegister
-                          ? 'Already have an account? Login'
-                          : 'Don\'t have an account? Register'),
+                      child: Text(
+                        _isRegister
+                            ? 'Already have an account? Login'
+                            : 'Don\'t have an account? Register',
+                      ),
                     ),
                   ],
                 ),

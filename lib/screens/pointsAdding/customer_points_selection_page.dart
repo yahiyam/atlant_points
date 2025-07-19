@@ -30,7 +30,10 @@ class CustomerPointsSelectionPage extends StatelessWidget {
             return const Center(child: Text('No categories found.'));
           }
           final pointCategories = snap.data!.docs
-              .map((doc) => PointCategory.fromJson(doc.data() as Map<String, dynamic>))
+              .map(
+                (doc) =>
+                    PointCategory.fromJson(doc.data() as Map<String, dynamic>),
+              )
               .toList();
 
           return _CategorySelector(
@@ -60,8 +63,10 @@ class _CategorySelectorState extends State<_CategorySelector> {
   final Map<PointCategory, int> selectedCategories = {};
   bool isSubmitting = false;
 
-  int get totalPoints => selectedCategories.entries
-      .fold(0, (sum, entry) => sum + entry.key.points * entry.value);
+  int get totalPoints => selectedCategories.entries.fold(
+    0,
+    (sum, entry) => sum + entry.key.points * entry.value,
+  );
 
   void handleClear() {
     setState(() => selectedCategories.clear());
@@ -131,9 +136,20 @@ class _CategorySelectorState extends State<_CategorySelector> {
           runSpacing: 10,
           children: widget.pointCategories.map((category) {
             final isSelected = selectedCategories.containsKey(category);
-            return Row(
-              mainAxisSize: MainAxisSize.min,
+            return Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 2,
               children: [
+                if (category.description != null)
+                  GestureDetector(
+                    onTap: () => showDescriptionDialog(category),
+                    child: Icon(
+                      Icons.info_outline,
+                      size: 20,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                const SizedBox(width: 10),
                 InputChip(
                   label: Text(
                     '${category.title} (+${category.points} pts)',
@@ -156,13 +172,6 @@ class _CategorySelectorState extends State<_CategorySelector> {
                     }
                   },
                 ),
-                if (category.description != null)
-                  IconButton(
-                    icon: const Icon(Icons.info_outline, size: 20),
-                    color: Theme.of(context).colorScheme.primary,
-                    tooltip: 'Info',
-                    onPressed: () => showDescriptionDialog(category),
-                  ),
               ],
             );
           }).toList(),

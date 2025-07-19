@@ -44,8 +44,17 @@ class _HomePageState extends State<HomePage> {
     if (_isLoadingMore || (!_hasMore && loadMore)) return;
     setState(() => _isLoadingMore = true);
 
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day);
+    final endOfDay = startOfDay.add(const Duration(days: 1));
+
     Query logsQuery = FirebaseFirestore.instance
         .collection('logs')
+        .where(
+          'timestamp',
+          isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay),
+        )
+        .where('timestamp', isLessThan: Timestamp.fromDate(endOfDay))
         .orderBy('timestamp', descending: true)
         .limit(_logsPerPage);
 
@@ -103,14 +112,26 @@ class _HomePageState extends State<HomePage> {
           },
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.analytics_outlined),
-            tooltip: 'Analytics',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const AdminDashboard()),
-              );
+          FutureBuilder<Employee?>(
+            future: getCurrentEmployee(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const SizedBox.shrink();
+              }
+              final employee = snapshot.data;
+              if (employee != null && employee.isAdmin) {
+                return IconButton(
+                  icon: const Icon(Icons.analytics_outlined),
+                  tooltip: 'Analytics',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AdminDashboard()),
+                    );
+                  },
+                );
+              }
+              return const SizedBox.shrink();
             },
           ),
         ],
@@ -126,8 +147,8 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   _PointsTodayCard(startOfDay: startOfDay, endOfDay: endOfDay),
                   _CustomersTodayCard(startOfDay: startOfDay, endOfDay: endOfDay),
-                  const _TopEmployeeCard(),
-                  const _TopCustomerCard(),
+                  _TopEmployeeCard(startOfDay: startOfDay, endOfDay: endOfDay),
+                  _TopCustomerCard(startOfDay: startOfDay, endOfDay: endOfDay),
                 ],
               ),
             ),
@@ -321,9 +342,7 @@ class _HomePageState extends State<HomePage> {
                                         vertical: 2,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Colors.deepPurple.withOpacity(
-                                          0.12,
-                                        ),
+                                        color: Colors.deepPurple,
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Text(
@@ -438,17 +457,17 @@ class _PointsTodayCard extends StatelessWidget {
   final DateTime startOfDay;
   final DateTime endOfDay;
 
-  const _PointsTodayCard({
-    required this.startOfDay,
-    required this.endOfDay,
-  });
+  const _PointsTodayCard({required this.startOfDay, required this.endOfDay});
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('logs')
-          .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+          .where(
+            'timestamp',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay),
+          )
           .where('timestamp', isLessThan: Timestamp.fromDate(endOfDay))
           .snapshots(),
       builder: (context, snap) {
@@ -476,23 +495,23 @@ class _CustomersTodayCard extends StatelessWidget {
   final DateTime startOfDay;
   final DateTime endOfDay;
 
-  const _CustomersTodayCard({
-    required this.startOfDay,
-    required this.endOfDay,
-  });
+  const _CustomersTodayCard({required this.startOfDay, required this.endOfDay});
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('customers')
-          .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+          .where(
+            'createdAt',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay),
+          )
           .where('createdAt', isLessThan: Timestamp.fromDate(endOfDay))
           .snapshots(),
       builder: (context, snap) {
         final count = snap.hasData ? snap.data!.docs.length : 0;
         return _SummaryCard(
-          title: "Customers",
+          title: "Customers Today",
           value: count.toString(),
           icon: Icons.people,
           color: const Color(0xFFFFD700),
@@ -502,18 +521,25 @@ class _CustomersTodayCard extends StatelessWidget {
   }
 }
 
-// --- Real-time Top Employee Card ---
+// --- Real-time Top Employee Today Card ---
 class _TopEmployeeCard extends StatelessWidget {
-  const _TopEmployeeCard();
+  final DateTime startOfDay;
+  final DateTime endOfDay;
+
+  const _TopEmployeeCard({required this.startOfDay, required this.endOfDay});
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection('logs').snapshots(),
+      stream: FirebaseFirestore.instance
+          .collection('logs')
+          .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+          .where('timestamp', isLessThan: Timestamp.fromDate(endOfDay))
+          .snapshots(),
       builder: (context, snap) {
         if (!snap.hasData) {
           return const _SummaryCard(
-            title: "Top Employee",
+            title: "Top Employee Today",
             value: "-",
             icon: Icons.emoji_events,
             color: Color(0xFF009FFD),
@@ -541,9 +567,9 @@ class _TopEmployeeCard extends StatelessWidget {
         return FutureBuilder<DocumentSnapshot>(
           future: topEmpId != '-' && topEmpId.isNotEmpty
               ? FirebaseFirestore.instance
-                    .collection('employees')
-                    .doc(topEmpId)
-                    .get()
+                  .collection('employees')
+                  .doc(topEmpId)
+                  .get()
               : null,
           builder: (context, empSnap) {
             String empName = '-';
@@ -554,7 +580,7 @@ class _TopEmployeeCard extends StatelessWidget {
                   (empSnap.data!.data() as Map<String, dynamic>)['name'] ?? '-';
             }
             return _SummaryCard(
-              title: "Top Employee",
+              title: "Top Employee Today",
               value: empName,
               icon: Icons.emoji_events,
               color: const Color(0xFF009FFD),
@@ -566,18 +592,25 @@ class _TopEmployeeCard extends StatelessWidget {
   }
 }
 
-// --- Real-time Top Customer Card ---
+// --- Real-time Top Customer Today Card ---
 class _TopCustomerCard extends StatelessWidget {
-  const _TopCustomerCard();
+  final DateTime startOfDay;
+  final DateTime endOfDay;
+
+  const _TopCustomerCard({required this.startOfDay, required this.endOfDay});
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection('logs').snapshots(),
+      stream: FirebaseFirestore.instance
+          .collection('logs')
+          .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+          .where('timestamp', isLessThan: Timestamp.fromDate(endOfDay))
+          .snapshots(),
       builder: (context, snap) {
         if (!snap.hasData) {
           return const _SummaryCard(
-            title: "Top Customer",
+            title: "Top Customer Today",
             value: "-",
             icon: Icons.person,
             color: Color(0xFFFFD700),
@@ -603,7 +636,7 @@ class _TopCustomerCard extends StatelessWidget {
           }
         }
         return _SummaryCard(
-          title: "Top Customer",
+          title: "Top Customer Today",
           value: topCust,
           icon: Icons.person,
           color: const Color(0xFFFFD700),

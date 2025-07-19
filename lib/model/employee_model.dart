@@ -2,22 +2,27 @@ class Employee {
   final String id;
   final String mobile;
   final String name;
-  final bool isAdmin; // <-- ADD THIS
+  final bool isAdmin;
+  final String? email;     // <-- ADDED
+  final String? password;  // <-- ADDED
 
   Employee({
     required this.id,
     required this.mobile,
     required this.name,
-    this.isAdmin = false, // <-- Default to false
+    this.isAdmin = false,
+    this.email,            // <-- ADDED
+    this.password,         // <-- ADDED
   });
 
   factory Employee.fromJson(Map<String, dynamic> json, String id) {
     return Employee(
       id: id,
-      // Note: Your OTP page uses 'phone', but this model uses 'mobile'. Ensure consistency.
       mobile: json['mobile'] ?? json['phone'] ?? '',
       name: json['name'] ?? '',
-      isAdmin: json['isAdmin'] ?? false, // <-- ADD THIS
+      isAdmin: json['isAdmin'] ?? false,
+      email: json['email'],        // <-- ADDED
+      password: json['password'],  // <-- ADDED
     );
   }
 
@@ -25,16 +30,27 @@ class Employee {
     return {
       'mobile': mobile,
       'name': name,
-      'isAdmin': isAdmin, // <-- ADD THIS
+      'isAdmin': isAdmin,
+      'email': email,        // <-- ADDED
+      'password': password,  // <-- ADDED
     };
   }
 
-  Employee copyWith({String? id, String? mobile, String? name, bool? isAdmin}) {
+  Employee copyWith({
+    String? id,
+    String? mobile,
+    String? name,
+    bool? isAdmin,
+    String? email,        // <-- ADDED
+    String? password,     // <-- ADDED
+  }) {
     return Employee(
       id: id ?? this.id,
       mobile: mobile ?? this.mobile,
       name: name ?? this.name,
-      isAdmin: isAdmin ?? this.isAdmin, // <-- ADD THIS
+      isAdmin: isAdmin ?? this.isAdmin,
+      email: email ?? this.email,         // <-- ADDED
+      password: password ?? this.password,// <-- ADDED
     );
   }
 }
